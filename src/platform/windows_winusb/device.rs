@@ -13,7 +13,8 @@ use windows_sys::Win32::{
     Devices::Usb::{
         WinUsb_ControlTransfer, WinUsb_Free, WinUsb_GetAssociatedInterface, WinUsb_Initialize,
         WinUsb_ResetPipe, WinUsb_SetCurrentAlternateSetting, WinUsb_SetPipePolicy,
-        PIPE_TRANSFER_TIMEOUT, RAW_IO, WINUSB_INTERFACE_HANDLE, WINUSB_SETUP_PACKET,
+        IGNORE_SHORT_PACKETS, PIPE_TRANSFER_TIMEOUT, RAW_IO, WINUSB_INTERFACE_HANDLE,
+        WINUSB_SETUP_PACKET,
     },
     Foundation::{GetLastError, FALSE, TRUE},
 };
@@ -259,6 +260,25 @@ impl WindowsInterface {
             debug!("WinUsb_GetPipePolicy succeeded to read MAXIMUM_TRANSFER_SIZE = {value}");
         } else {
             warn!("WinUsb_GetPipePolicy failed to read MAXIMUM_TRANSFER_SIZE");
+        }
+
+        let enable: u32 = 1;
+        let length: u32 = size_of_val(&enable) as u32;
+        unsafe {
+            let r = WinUsb_SetPipePolicy(
+                self.winusb_handle,
+                endpoint,
+                IGNORE_SHORT_PACKETS,
+                length,
+                &enable as *const u32 as *const c_void,
+            );
+            if r == 1 {
+                debug!(
+                    "WinUsb_SetPipePolicy succeeded to ignore IGNORE_SHORT_PACKETS on endpoint 0x{endpoint:02X}"
+                );
+            } else {
+                warn!("WinUsb_SetPipePolicy failed to ignore IGNORE_SHORT_PACKETS on endpoint 0x{endpoint:02X}");
+            }
         }
     }
 
